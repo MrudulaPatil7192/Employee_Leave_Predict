@@ -14,6 +14,12 @@ if os.path.exists(MODEL_PATH):
     with open(MODEL_PATH, "rb") as f:
         model = pickle.load(f)
 
+# Categorical Feature Mappings (converts strings to numeric values required by sklearn)
+EDUCATION_MAP = {"Bachelors": 0, "Masters": 1, "PHD": 2}
+CITY_MAP = {"Bangalore": 0, "Pune": 1, "New Delhi": 2}
+GENDER_MAP = {"Female": 0, "Male": 1}
+BENCHED_MAP = {"No": 0, "Yes": 1}
+
 # HTML Template with Embedded CSS
 HTML_LAYOUT = """
 <!DOCTYPE html>
@@ -260,23 +266,22 @@ def predict():
         )
 
     try:
-        # Extract features from form submission
+        # Extract inputs and convert categorical text to numeric encoders
         form_data = {
-            "Education": request.form.get("Education"),
+            "Education": EDUCATION_MAP.get(request.form.get("Education"), 0),
             "JoiningYear": int(request.form.get("JoiningYear")),
-            "City": request.form.get("City"),
+            "City": CITY_MAP.get(request.form.get("City"), 0),
             "PaymentTier": int(request.form.get("PaymentTier")),
             "Age": int(request.form.get("Age")),
-            "Gender": request.form.get("Gender"),
-            "EverBenched": request.form.get("EverBenched"),
+            "Gender": GENDER_MAP.get(request.form.get("Gender"), 0),
+            "EverBenched": BENCHED_MAP.get(request.form.get("EverBenched"), 0),
             "ExperienceInCurrentDomain": int(request.form.get("ExperienceInCurrentDomain"))
         }
 
-        # Convert to DataFrame matching feature names
+        # Format input DataFrame matching feature columns
         input_df = pd.DataFrame([form_data])
 
-        # Note: If your training pipeline included categorical encoders (LabelEncoder/OneHotEncoder/Scaler),
-        # apply those transformations here or pass through a saved Pipeline object.
+        # Generate model prediction
         prediction = model.predict(input_df)[0]
 
         result_text = f"Prediction Result: Class {prediction}"
