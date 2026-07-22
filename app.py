@@ -1,304 +1,136 @@
-import os
-import pickle
-import numpy as np
+import streamlit as st
 import pandas as pd
-from flask import Flask, render_template_string, request
+import numpy as np
 
-app = Flask(__name__)
+# Page Configuration
+st.set_page_config(page_title="Logistic Regression Predictor", layout="centered")
 
-# Load the logistic regression model
-MODEL_PATH = "logistic_model.pkl"
-model = None
-
-if os.path.exists(MODEL_PATH):
-    with open(MODEL_PATH, "rb") as f:
-        model = pickle.load(f)
-
-# Categorical Feature Mappings (converts strings to numeric values required by sklearn)
-EDUCATION_MAP = {"Bachelors": 0, "Masters": 1, "PHD": 2}
-CITY_MAP = {"Bangalore": 0, "Pune": 1, "New Delhi": 2}
-GENDER_MAP = {"Female": 0, "Male": 1}
-BENCHED_MAP = {"No": 0, "Yes": 1}
-
-# HTML Template with Embedded CSS
-HTML_LAYOUT = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Risk / Retention Predictor</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+# Custom CSS for styling the UI
+st.markdown("""
     <style>
-        :root {
-            --primary: #4F46E5;
-            --primary-hover: #4338CA;
-            --bg-gradient: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #311042 100%);
-            --card-bg: rgba(255, 255, 255, 0.95);
-            --text-main: #1E293B;
-            --text-muted: #64748B;
-            --border: #E2E8F0;
-            --radius: 16px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif;
-        }
-
-        body {
-            background: var(--bg-gradient);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 2rem 1rem;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 800px;
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
-            padding: 2.5rem;
-            backdrop-filter: blur(10px);
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .header h1 {
-            color: var(--text-main);
-            font-size: 1.875rem;
-            font-weight: 700;
-            letter-spacing: -0.025em;
-        }
-
-        .header p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-            margin-top: 0.5rem;
-        }
-
-        .grid-form {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.25rem;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group label {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--text-main);
-            margin-bottom: 0.4rem;
-        }
-
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 1.5px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.95rem;
-            color: var(--text-main);
-            background-color: #F8FAFC;
-            transition: all 0.2s ease;
-            outline: none;
-        }
-
-        .form-group input:focus, .form-group select:focus {
-            border-color: var(--primary);
-            background-color: #FFFFFF;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
-        }
-
-        .btn-submit {
-            grid-column: 1 / -1;
-            margin-top: 1rem;
-            padding: 0.875rem;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s ease, transform 0.1s ease;
-        }
-
-        .btn-submit:hover {
-            background: var(--primary-hover);
-        }
-
-        .btn-submit:active {
-            transform: scale(0.99);
-        }
-
-        .result-card {
-            margin-top: 2rem;
-            padding: 1.25rem;
-            border-radius: 12px;
-            text-align: center;
-            font-size: 1.1rem;
-            font-weight: 600;
-            animation: fadeIn 0.3s ease-in-out;
-        }
-
-        .result-class-0 {
-            background-color: #DEF7EC;
-            color: #03543F;
-            border: 1px solid #BCF0DA;
-        }
-
-        .result-class-1 {
-            background-color: #FDE8E8;
-            color: #9B1C1C;
-            border: 1px solid #FBD5D5;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+    .main {
+        background-color: #0d0f1d;
+    }
+    .stApp {
+        background-color: #121526;
+    }
+    .card-container {
+        background-color: #f8f9fa;
+        padding: 30px;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        color: #1f2937;
+    }
+    .title-text {
+        text-align: center;
+        font-weight: 700;
+        font-size: 28px;
+        color: #1f2937;
+        margin-bottom: 5px;
+    }
+    .subtitle-text {
+        text-align: center;
+        color: #6b7280;
+        font-size: 14px;
+        margin-bottom: 25px;
+    }
+    div.stButton > button:first-child {
+        background-color: #4f46e5;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px;
+        font-weight: 600;
+        font-size: 16px;
+        width: 100%;
+        margin-top: 10px;
+        margin-bottom: 15px;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #4338ca;
+        color: white;
+    }
+    .result-class-1 {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+        padding: 16px;
+        border-radius: 10px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 18px;
+        margin-top: 15px;
+    }
+    .result-class-0 {
+        background-color: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+        padding: 16px;
+        border-radius: 10px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 18px;
+        margin-top: 15px;
+    }
     </style>
-</head>
-<body>
+""", unsafe_allow_html=True)
 
-<div class="container">
-    <div class="header">
-        <h1>Logistic Regression Predictor</h1>
-        <p>Enter the employee details below to generate a prediction model output.</p>
-    </div>
+# Main UI Wrapper
+st.markdown('<div class="title-text">Logistic Regression Predictor</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle-text">Enter the employee details below to generate a prediction model output.</div>', unsafe_allow_html=True)
 
-    <form method="POST" action="/predict" class="grid-form">
-        <div class="form-group">
-            <label for="Education">Education</label>
-            <select name="Education" id="Education" required>
-                <option value="Bachelors">Bachelors</option>
-                <option value="Masters">Masters</option>
-                <option value="PHD">PHD</option>
-            </select>
-        </div>
+# Placeholder model prediction function (Replace this with your trained model code)
+def dummy_model_predict(data):
+    # Replace with: return model.predict(data)[0]
+    # Simple logic demonstration: if Ever Benched is Yes or Payment Tier is Tier 3 -> Class 1
+    if data['EverBenched'] == 'Yes' or data['PaymentTier'] == 'Tier 3':
+        return 1
+    return 0
 
-        <div class="form-group">
-            <label for="JoiningYear">Joining Year</label>
-            <input type="number" name="JoiningYear" id="JoiningYear" value="2015" min="2000" max="2030" required>
-        </div>
+# Input Form (Prevents page reloads from clearing state)
+with st.form("prediction_form"):
+    col1, col2 = st.columns(2)
 
-        <div class="form-group">
-            <label for="City">City</label>
-            <select name="City" id="City" required>
-                <option value="Bangalore">Bangalore</option>
-                <option value="Pune">Pune</option>
-                <option value="New Delhi">New Delhi</option>
-            </select>
-        </div>
+    with col1:
+        education = st.selectbox("Education", ["Bachelors", "Masters", "PHD"], key="education")
+        city = st.selectbox("City", ["Bangalore", "Pune", "New Delhi"], key="city")
+        age = st.number_input("Age", min_value=18, max_value=70, value=28, step=1, key="age")
+        ever_benched = st.selectbox("Ever Benched?", ["No", "Yes"], key="benched")
 
-        <div class="form-group">
-            <label for="PaymentTier">Payment Tier</label>
-            <select name="PaymentTier" id="PaymentTier" required>
-                <option value="1">Tier 1</option>
-                <option value="2">Tier 2</option>
-                <option value="3" selected>Tier 3</option>
-            </select>
-        </div>
+    with col2:
+        joining_year = st.number_input("Joining Year", min_value=2000, max_value=2026, value=2015, step=1, key="year")
+        payment_tier = st.selectbox("Payment Tier", ["Tier 1", "Tier 2", "Tier 3"], index=2, key="tier")
+        gender = st.selectbox("Gender", ["Male", "Female"], key="gender")
+        experience = st.number_input("Experience in Current Domain (Years)", min_value=0, max_value=40, value=3, step=1, key="experience")
 
-        <div class="form-group">
-            <label for="Age">Age</label>
-            <input type="number" name="Age" id="Age" value="28" min="18" max="70" required>
-        </div>
+    # Form Submit Button
+    submit_button = st.form_submit_button(label="Predict Result")
 
-        <div class="form-group">
-            <label for="Gender">Gender</label>
-            <select name="Gender" id="Gender" required>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-            </select>
-        </div>
+# Output Processing & Display
+if submit_button:
+    # Prepare input DataFrame for model inference
+    input_data = {
+        'Education': education,
+        'JoiningYear': joining_year,
+        'City': city,
+        'PaymentTier': payment_tier,
+        'Age': age,
+        'Gender': gender,
+        'EverBenched': ever_benched,
+        'ExperienceInCurrentDomain': experience
+    }
+    
+    # Run prediction
+    prediction = dummy_model_predict(input_data)
 
-        <div class="form-group">
-            <label for="EverBenched">Ever Benched?</label>
-            <select name="EverBenched" id="EverBenched" required>
-                <option value="No">No</option>
-                <option value="Yes">Yes</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label for="ExperienceInCurrentDomain">Experience in Current Domain (Years)</label>
-            <input type="number" name="ExperienceInCurrentDomain" id="ExperienceInCurrentDomain" value="3" min="0" max="20" required>
-        </div>
-
-        <button type="submit" class="btn-submit">Predict Result</button>
-    </form>
-
-    {% if prediction_text %}
-        <div class="result-card {{ result_class }}">
-            {{ prediction_text }}
-        </div>
-    {% endif %}
-</div>
-
-</body>
-</html>
-"""
-
-@app.route("/")
-def home():
-    return render_template_string(HTML_LAYOUT)
-
-@app.route("/predict", methods=["POST"])
-def predict():
-    if model is None:
-        return render_template_string(
-            HTML_LAYOUT, 
-            prediction_text="Error: logistic_model.pkl not found!", 
-            result_class="result-class-1"
+    # Dynamic styling based on class result
+    if prediction == 1:
+        st.markdown(
+            f'<div class="result-class-1">Prediction Result: Class {prediction}</div>',
+            unsafe_allow_html=True
         )
-
-    try:
-        # Extract inputs and convert categorical text to numeric encoders
-        form_data = {
-            "Education": EDUCATION_MAP.get(request.form.get("Education"), 0),
-            "JoiningYear": int(request.form.get("JoiningYear")),
-            "City": CITY_MAP.get(request.form.get("City"), 0),
-            "PaymentTier": int(request.form.get("PaymentTier")),
-            "Age": int(request.form.get("Age")),
-            "Gender": GENDER_MAP.get(request.form.get("Gender"), 0),
-            "EverBenched": BENCHED_MAP.get(request.form.get("EverBenched"), 0),
-            "ExperienceInCurrentDomain": int(request.form.get("ExperienceInCurrentDomain"))
-        }
-
-        # Format input DataFrame matching feature columns
-        input_df = pd.DataFrame([form_data])
-
-        # Generate model prediction
-        prediction = model.predict(input_df)[0]
-
-        result_text = f"Prediction Result: Class {prediction}"
-        result_class = "result-class-0" if prediction == 0 else "result-class-1"
-
-        return render_template_string(
-            HTML_LAYOUT, 
-            prediction_text=result_text, 
-            result_class=result_class
+    else:
+        st.markdown(
+            f'<div class="result-class-0">Prediction Result: Class {prediction}</div>',
+            unsafe_allow_html=True
         )
-
-    except Exception as e:
-        return render_template_string(
-            HTML_LAYOUT, 
-            prediction_text=f"Error processing input: {str(e)}", 
-            result_class="result-class-1"
-        )
-
-if __name__ == "__main__":
-    app.run(debug=True)
